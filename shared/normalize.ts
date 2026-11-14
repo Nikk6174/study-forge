@@ -255,7 +255,7 @@ function validateList<S extends z.ZodTypeAny>(
   return { valid, issues };
 }
 
-function assignIds<T extends { id: unknown }>(items: T[], prefix: string): (Omit<T, 'id'> & { id: string })[] {
+function assignIds<T extends { id?: unknown }>(items: T[], prefix: string): (Omit<T, 'id'> & { id: string })[] {
   const used = new Set<string>();
   let n = 0;
   return items.map((item) => {
@@ -317,7 +317,7 @@ export function normalizeStudySet(json: unknown, opts: NormalizeOptions): Normal
   const dropped = issues.length;
   if (dropped > 0) warnings.push(`Skipped ${dropped} malformed or duplicate item${dropped === 1 ? '' : 's'}.`);
 
-  const finalize = <T extends { id: unknown }>(valid: T[], want: boolean, prefix: string, noun: string) => {
+  const finalize = <T extends { id?: unknown }>(valid: T[], want: boolean, prefix: string, noun: string) => {
     if (!want) return [];
     if (opts.count && valid.length < opts.count) {
       warnings.push(`Asked for ${opts.count} ${noun}, got ${valid.length}.`);
