@@ -1,6 +1,6 @@
 # Study Forge
 
-Paste notes or name a topic, and Gemini turns it into **flashcards** and a **multiple-choice quiz**. Flip through cards, take the quiz, retest only the questions you missed, and refine the set with follow-ups like "make it harder".
+Paste notes, name a topic, or **attach a file** (PDF, a photo of your notes, or a text file), and Gemini turns it into **flashcards** and a **multiple-choice quiz**. Flip through cards, take the quiz, retest only the questions you missed, and refine the set with follow-ups like "make it harder".
 
 It isn't a chatbot. The model returns JSON. The server and the client both validate it, and the app renders it as stateful React components.
 
@@ -90,6 +90,7 @@ The rule is **lenient on the way in, strict on the way out.** Components never c
 | **Slow** | Each model call has a 25s timeout, and the whole request has a 45s budget. The client times out at 55s, so the server's typed error normally arrives first. After 10s the UI says it's slow and offers Cancel. |
 | **Failed** (429, 5xx, network, blocked) | These map to typed codes. 429, 5xx and timeouts fall back to the next model. Safety blocks and a bad API key don't fall back. The UI shows a specific title and message, plus Retry only when `retryable` is true. |
 | **Stale responses** | Each new request aborts the previous one. A sequence number also drops any late response. When the browser disconnects, the server aborts the upstream Gemini call too. A refinement result always goes to the session that requested it, even if you've switched sessions meanwhile. |
+| **Bad uploads** | The browser rejects unsupported types, empty files and files over 3 MB, and the server checks type, size and base64 encoding again. If a file is unreadable or has nothing to study (a blank photo, say), the model returns an explanatory `notice`, which the UI shows. A file stays attached through a repair turn, so the repair still sees it. |
 | **Corrupt localStorage** | Every saved set goes back through the normaliser on load. Broken sessions are skipped. |
 | **Render bug** | A top-level `ErrorBoundary` shows a Reload button instead of a blank page. |
 
@@ -103,6 +104,7 @@ Models also tend to put the correct answer in the same slot. The quiz reshuffles
 
 ## Features
 
+- **Upload from device:** use the paperclip button or drag a file onto the textarea. Text files (`.txt`, `.md`, `.csv`, `.json`) are read in the browser and put into the textarea so you can edit them. PDFs and images (PNG, JPG, WebP, HEIC) are sent to Gemini as `inlineData`, so on a phone you can photograph your notes. Files over 3 MB, empty files and unsupported types are rejected in the browser with a specific message, and the server checks type, size and base64 again. If you pick files quickly in a row, only the last one is kept.
 - Flashcards: 3D flip, "Got it / Still learning", end-of-deck summary, **review only missed cards**, shuffle. Keys: `Space` flips, `←`/`→` move between cards, `1`/`2` mark. Swipe on touch screens.
 - Quiz: immediate feedback with an explanation, results with your answer next to the correct one, **retest only wrong answers**. Keys: `1–6` or `A–F` to answer, `Enter` for next.
 - **Refinement loop:** follow-ups edit the existing set (unchanged items keep their ids) instead of regenerating it. Each refinement is a new version, with **Undo**. The current set stays usable while a refinement runs.
@@ -110,10 +112,10 @@ Models also tend to put the correct answer in the same slot. The quiz reshuffles
 
 ## Tests
 
-`npm test` runs 34 tests:
+`npm test` runs 37 tests:
 
 - the normaliser: every drift and failure case above;
-- the server pipeline with a scripted fake `fetch`: repair turn, fallback on 5xx/429/timeout, no retry on empty, safety block, bad key, client abort, input validation, simulator;
+- the server pipeline with a scripted fake `fetch`: repair turn, fallback on 5xx/429/timeout, no retry on empty, safety block, bad key, client abort, input validation, simulator, and attachments (sent as `inlineData`, kept on the repair turn, invalid ones rejected before any model call);
 - quiz shuffling.
 
 ---
@@ -132,6 +134,9 @@ Models also tend to put the correct answer in the same slot. The quiz reshuffles
 - **No rate limiting on `/api/generate`.** A public deployment should add one (for example Vercel KV or Upstash) to protect the key's quota.
 - Sessions live only in this browser's localStorage. There's no sync or export.
 - Very long notes are capped at 15k characters. There's no chunking.
+- Attachments are capped at 3 MB, which keeps requests under Vercel's 4.5 MB body limit. Bigger PDFs would need upload to Gemini's Files API.
+- Attached files aren't saved with the session (localStorage only holds about 5 MB). Refining a file-based set therefore works from the generated cards and questions rather than re-reading the file.
+- Scanned PDFs and handwriting depend entirely on Gemini's vision, and quality varies.
 - The Vercel function hasn't been verified on a live deploy here. Locally, the same handler runs through the Vite plugin.
 
 ## Time spent

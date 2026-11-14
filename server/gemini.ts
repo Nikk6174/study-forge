@@ -13,6 +13,8 @@ const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 export interface Turn {
   role: 'user' | 'model';
   text: string;
+  /** Inline file (PDF/image) sent alongside the text. */
+  inline?: { mimeType: string; data: string };
 }
 
 export interface GeminiCall {
@@ -61,7 +63,10 @@ export async function callGemini(call: GeminiCall): Promise<GeminiResult> {
         signal: ctrl.signal,
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: call.system }] },
-          contents: call.turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
+          contents: call.turns.map((t) => ({
+            role: t.role,
+            parts: [...(t.inline ? [{ inlineData: { mimeType: t.inline.mimeType, data: t.inline.data } }] : []), { text: t.text }],
+          })),
           generationConfig: {
             responseMimeType: 'application/json',
             responseSchema: call.schema,

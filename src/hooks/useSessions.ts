@@ -12,6 +12,8 @@ export interface SessionInput {
   text: string;
   mode: Mode;
   count: number;
+  /** Name only – file contents aren't stored (localStorage quota is ~5 MB). */
+  attachmentName?: string;
 }
 
 export interface Version {

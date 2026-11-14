@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { AppError, type ErrorCode } from '../shared/errors.js';
 import { OutputError, normalizeStudySet, parseModelOutput, type NormalizeOptions } from '../shared/normalize.js';
-import { LIMITS, SIMULATE_MODES, type GenerateRequest, type GenerateResponse } from '../shared/types.js';
+import { ATTACHMENT_MIME_TYPES, LIMITS, SIMULATE_MODES, type GenerateRequest, type GenerateResponse } from '../shared/types.js';
 import { callGemini, type GeminiResult, type Turn } from './gemini.js';
 import { RESPONSE_SCHEMA, SYSTEM_PROMPT, buildGeneratePrompt, buildRefinePrompt, buildRepairPrompt } from './prompt.js';
 import { simulate } from './simulate.js';
@@ -34,31 +34,56 @@ const PER_CALL_TIMEOUT_MS = 25_000;
 const MIN_USEFUL_MS = 3_000; // don't start an attempt that can't finish
 const FALLBACK_ON: ErrorCode[] = ['TIMEOUT', 'RATE_LIMITED', 'UPSTREAM', 'BAD_OUTPUT'];
 
-const RequestSchema = z.object({
-  text: z
-    .string({ required_error: 'Enter some notes or a topic.' })
-    .trim()
-    .min(LIMITS.textMin, 'Enter at least a few characters.')
-    .max(LIMITS.textMax, `Notes are too long (max ${LIMITS.textMax.toLocaleString()} characters).`),
-  mode: z.enum(['flashcards', 'quiz', 'both']),
-  count: z.coerce
-    .number()
-    .int()
-    .min(LIMITS.countMin, `Choose at least ${LIMITS.countMin} items.`)
-    .max(LIMITS.countMax, `Choose at most ${LIMITS.countMax} items.`),
-  refine: z
-    .object({
-      set: z.unknown(),
-      instruction: z.string().trim().min(1, 'Describe the change you want.').max(LIMITS.instructionMax),
-    })
-    .optional(),
-  simulate: z.enum(SIMULATE_MODES).optional(),
-});
+const MAX_BASE64 = Math.ceil(LIMITS.attachmentMaxBytes / 3) * 4;
+
+const RequestSchema = z
+  .object({
+    text: z
+      .string()
+      .trim()
+      .max(LIMITS.textMax, `Notes are too long (max ${LIMITS.textMax.toLocaleString()} characters).`)
+      .default(''),
+    mode: z.enum(['flashcards', 'quiz', 'both']),
+    count: z.coerce
+      .number()
+      .int()
+      .min(LIMITS.countMin, `Choose at least ${LIMITS.countMin} items.`)
+      .max(LIMITS.countMax, `Choose at most ${LIMITS.countMax} items.`),
+    refine: z
+      .object({
+        set: z.unknown(),
+        instruction: z.string().trim().min(1, 'Describe the change you want.').max(LIMITS.instructionMax),
+      })
+      .optional(),
+    simulate: z.enum(SIMULATE_MODES).optional(),
+    attachment: z
+      .object({
+        name: z.string().trim().min(1).max(200),
+        mimeType: z.enum(ATTACHMENT_MIME_TYPES, { message: 'That file type isn’t supported. Use a PDF or an image.' }),
+        data: z
+          .string()
+          .min(1, 'The attached file is empty.')
+          .max(MAX_BASE64, `File is too large (max ${LIMITS.attachmentMaxBytes / 1024 / 1024} MB).`)
+          .regex(/^[A-Za-z0-9+/]+={0,2}$/, 'The attached file data is corrupted.'),
+      })
+      .optional(),
+  })
+  // Text is required unless there's a file to study from, or we're refining an existing set.
+  .superRefine((r, ctx) => {
+    if (!r.refine && !r.attachment && r.text.length < LIMITS.textMin) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['text'],
+        message: r.text ? 'Enter at least a few characters.' : 'Enter some notes or a topic, or attach a file.',
+      });
+    }
+  });
 
 export function parseRequest(body: unknown): GenerateRequest {
   const r = RequestSchema.safeParse(body);
   if (!r.success) throw new AppError('INVALID_INPUT', r.error.issues[0]?.message ?? 'Invalid request.');
   const req = r.data as GenerateRequest;
+  if (req.refine) delete req.attachment; // refinement works from the existing set
   if (req.refine) {
     // The set comes from the browser (localStorage) – revalidate it.
     try {
@@ -92,7 +117,7 @@ export async function generate(body: unknown, deps: GenerateDeps, signal?: Abort
 
   const prompt = req.refine
     ? buildRefinePrompt(req.text, req.refine.set, req.refine.instruction)
-    : buildGeneratePrompt(req.text, req.mode, req.count);
+    : buildGeneratePrompt(req.text, req.mode, req.count, req.attachment?.name);
 
   let attempts = 0;
   let lastError: unknown;
@@ -113,7 +138,8 @@ export async function generate(body: unknown, deps: GenerateDeps, signal?: Abort
   };
 
   for (const model of deps.models) {
-    const turns: Turn[] = [{ role: 'user', text: prompt }];
+    // The file rides on the first user turn, so a repair turn still has it in context.
+    const turns: Turn[] = [{ role: 'user', text: prompt, inline: req.attachment }];
     try {
       const first = await ask(model, turns);
       try {

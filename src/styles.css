@@ -795,3 +795,78 @@ textarea[aria-invalid='true'] {
   border-top: 1px solid var(--border);
   padding-top: 0.9rem;
 }
+
+/* ---------- file attach ---------- */
+.help {
+  align-items: center;
+}
+.attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 36px;
+  padding: 0.25rem 0.6rem 0.25rem 0.45rem;
+  margin-left: -0.45rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.attach-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+.attach-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.dropzone {
+  position: relative;
+}
+.dropzone.is-dragging textarea {
+  border: 2px dashed var(--accent);
+  background: var(--accent-soft);
+}
+.drop-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: var(--accent);
+  pointer-events: none;
+}
+.attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  margin-top: -0.25rem;
+}
+.attachment-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-status {
+  font-size: 0.85rem;
+  margin: -0.4rem 0 0;
+}
+.center {
+  text-align: center;
+  margin: -0.25rem 0 0;
+}
+@media (hover: none) {
+  .center {
+    display: none;
+  }
+}

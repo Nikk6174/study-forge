@@ -34,8 +34,9 @@ export default function App() {
     (v: ComposerValue) => {
       setWarnings([]);
       revealWorkspace();
-      void gen.run({ text: v.text, mode: v.mode, count: v.count, simulate: v.simulate }, 'generate', (res) => {
-        sessions.create({ text: v.text, mode: v.mode, count: v.count }, res.set);
+      const req = { text: v.text, mode: v.mode, count: v.count, attachment: v.attachment, simulate: v.simulate };
+      void gen.run(req, 'generate', (res) => {
+        sessions.create({ text: v.text, mode: v.mode, count: v.count, attachmentName: v.attachment?.name }, res.set);
         setWarnings(res.warnings);
       });
     },

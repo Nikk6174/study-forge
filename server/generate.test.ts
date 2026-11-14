@@ -129,6 +129,32 @@ describe('generate', () => {
     expect(calls).toHaveLength(0);
   });
 
+  it('sends an attached file inline and allows empty text with it', async () => {
+    const { fetchImpl, calls } = scripted(geminiOk(validSet));
+    const attachment = { name: 'notes.pdf', mimeType: 'application/pdf', data: 'JVBERi0xLjQK' };
+    await generate({ ...body, text: '', attachment }, deps(fetchImpl));
+    const parts = calls[0]!.body.contents[0].parts;
+    expect(parts[0]).toEqual({ inlineData: { mimeType: 'application/pdf', data: 'JVBERi0xLjQK' } });
+    expect(parts[1].text).toMatch(/attached file/);
+  });
+
+  it('keeps the attachment on the repair turn', async () => {
+    const { fetchImpl, calls } = scripted(geminiOk('oops'), geminiOk(validSet));
+    const attachment = { name: 'n.png', mimeType: 'image/png', data: 'iVBORw0KGgo=' };
+    await generate({ ...body, attachment }, deps(fetchImpl));
+    expect(calls[1]!.body.contents[0].parts[0].inlineData.mimeType).toBe('image/png');
+  });
+
+  it('rejects unsupported, corrupt or oversized attachments before calling the model', async () => {
+    const { fetchImpl, calls } = scripted();
+    const bad = (attachment: object) => generate({ ...body, text: '', attachment }, deps(fetchImpl));
+    await rejectsWith(bad({ name: 'a.exe', mimeType: 'application/x-msdownload', data: 'AAAA' }), 'INVALID_INPUT');
+    await rejectsWith(bad({ name: 'a.pdf', mimeType: 'application/pdf', data: 'not base64!' }), 'INVALID_INPUT');
+    await rejectsWith(bad({ name: 'a.pdf', mimeType: 'application/pdf', data: 'A'.repeat(5_000_000) }), 'INVALID_INPUT');
+    await rejectsWith(generate({ ...body, text: '' }, deps(fetchImpl)), 'INVALID_INPUT');
+    expect(calls).toHaveLength(0);
+  });
+
   it('requires an API key', async () => {
     const { fetchImpl } = scripted();
     await rejectsWith(generate(body, deps(fetchImpl, { apiKey: undefined })), 'CONFIG');

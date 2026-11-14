@@ -31,6 +31,7 @@ export function StudySetView({ session, children, footer, refining, onUndo }: Pr
           <h2>{set.title}</h2>
           <p className="muted small">
             {set.flashcards.length} cards · {set.questions.length} questions
+            {session.input.attachmentName && <> · from {session.input.attachmentName}</>}
             {session.versions.length > 1 && <> · version {session.versions.length}</>}
             {version.instruction && <> · “{version.instruction}”</>}
           </p>

@@ -7,7 +7,8 @@ import { generate, type GenerateDeps } from './generate.js';
  * Vercel serverless function, so local dev runs exactly the production code.
  */
 
-const MAX_BODY_BYTES = 200_000;
+// Room for a base64 attachment (LIMITS.attachmentMaxBytes ≈ 4 MB encoded) plus JSON.
+const MAX_BODY_BYTES = 4_500_000;
 const DEFAULT_MODELS = ['gemini-flash-lite-latest', 'gemini-2.5-flash'];
 
 export function depsFromEnv(env: Record<string, string | undefined>, opts: { dev: boolean }): GenerateDeps {
