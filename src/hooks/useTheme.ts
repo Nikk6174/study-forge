@@ -6,7 +6,7 @@ const KEY = 'study-forge:theme';
 function initial(): Theme {
   const saved = localStorage.getItem(KEY);
   if (saved === 'light' || saved === 'dark') return saved;
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return 'dark'; // dark-first design; the toggle remembers a light preference
 }
 
 export function useTheme() {
@@ -14,7 +14,7 @@ export function useTheme() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#14161c' : '#f7f7fb');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#07080F' : '#F6F4FB');
   }, [theme]);
 
   const toggle = useCallback(() => {

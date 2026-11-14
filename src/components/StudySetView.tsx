@@ -1,3 +1,4 @@
+import { BrainCircuit, FileText, GitBranch, Layers, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import type { Session } from '../hooks/useSessions';
 import { FlashcardDeck } from './FlashcardDeck';
@@ -27,18 +28,32 @@ export function StudySetView({ session, children, footer, refining, onUndo }: Pr
   return (
     <section className="study" aria-busy={refining}>
       <header className="study-head">
-        <div>
+        <div className="study-title">
+          <div className="eyebrow">Study set</div>
           <h2>{set.title}</h2>
-          <p className="muted small">
-            {set.flashcards.length} cards · {set.questions.length} questions
-            {session.input.attachmentName && <> · from {session.input.attachmentName}</>}
-            {session.versions.length > 1 && <> · version {session.versions.length}</>}
-            {version.instruction && <> · “{version.instruction}”</>}
-          </p>
+          <div className="meta-chips">
+            <span className="meta-chip">
+              <Layers size={13} aria-hidden /> {set.flashcards.length} cards
+            </span>
+            <span className="meta-chip">
+              <BrainCircuit size={13} aria-hidden /> {set.questions.length} questions
+            </span>
+            {session.input.attachmentName && (
+              <span className="meta-chip" title={session.input.attachmentName}>
+                <FileText size={13} aria-hidden /> {session.input.attachmentName}
+              </span>
+            )}
+            {session.versions.length > 1 && (
+              <span className="meta-chip meta-chip-accent" title={version.instruction}>
+                <GitBranch size={13} aria-hidden /> v{session.versions.length}
+                {version.instruction && <> · {version.instruction}</>}
+              </span>
+            )}
+          </div>
         </div>
         {session.versions.length > 1 && (
           <button className="btn btn-ghost btn-small" onClick={onUndo} disabled={refining}>
-            Undo refine
+            <Undo2 size={14} aria-hidden /> Undo
           </button>
         )}
       </header>
@@ -48,10 +63,10 @@ export function StudySetView({ session, children, footer, refining, onUndo }: Pr
       {hasCards && hasQuiz && (
         <div className="tabs" role="tablist">
           <button role="tab" aria-selected={active === 'cards'} onClick={() => setTab('cards')}>
-            Flashcards <span className="tab-count">{set.flashcards.length}</span>
+            <Layers size={16} aria-hidden /> Flashcards <span className="tab-count">{set.flashcards.length}</span>
           </button>
           <button role="tab" aria-selected={active === 'quiz'} onClick={() => setTab('quiz')}>
-            Quiz <span className="tab-count">{set.questions.length}</span>
+            <BrainCircuit size={16} aria-hidden /> Quiz <span className="tab-count">{set.questions.length}</span>
           </button>
         </div>
       )}

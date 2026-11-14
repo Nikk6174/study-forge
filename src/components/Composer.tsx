@@ -1,3 +1,4 @@
+import { FileText, Image as ImageIcon, Paperclip, Sparkles, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { LIMITS, SIMULATE_MODES, type Attachment, type Mode, type SimulateMode } from '../../shared/types';
 import { ACCEPT, formatBytes, readFileForComposer } from '../lib/files';
@@ -46,11 +47,6 @@ interface AttachedFile {
 
 type FileStatus = { kind: 'idle' } | { kind: 'reading'; name: string } | { kind: 'error'; message: string } | { kind: 'info'; message: string };
 
-const PaperclipIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-  </svg>
-);
 
 export function Composer({ busy, onSubmit }: Props) {
   const [text, setText] = useState('');
@@ -114,6 +110,10 @@ export function Composer({ busy, onSubmit }: Props) {
         submit();
       }}
     >
+      <div className="composer-head">
+        <h2>Forge a new set</h2>
+        <span className="xp-hint">+10 XP</span>
+      </div>
       <label htmlFor="notes" className="label">
         Paste notes, type a topic, or attach a file
       </label>
@@ -156,13 +156,15 @@ export function Composer({ busy, onSubmit }: Props) {
 
       {attached && (
         <div className="attachment-chip">
-          <span aria-hidden>{attached.attachment.mimeType === 'application/pdf' ? '📄' : '🖼️'}</span>
+          <span className="attachment-icon" aria-hidden>
+            {attached.attachment.mimeType === 'application/pdf' ? <FileText size={16} /> : <ImageIcon size={16} />}
+          </span>
           <span className="attachment-name" title={attached.attachment.name}>
             {attached.attachment.name}
           </span>
           <span className="muted small">{formatBytes(attached.size)}</span>
           <button type="button" className="btn btn-ghost btn-small" onClick={removeAttachment} aria-label={`Remove ${attached.attachment.name}`}>
-            ✕
+            <X size={14} />
           </button>
         </div>
       )}
@@ -176,7 +178,7 @@ export function Composer({ busy, onSubmit }: Props) {
           aria-label="Attach a file from your device"
           title="Attach a PDF, image, or text file"
         >
-          <PaperclipIcon />
+          <Paperclip size={16} aria-hidden />
           <span>{reading ? 'Reading…' : attached ? 'Replace file' : 'Attach file'}</span>
         </button>
         <span className={tooLong ? 'bad-text' : ''}>
@@ -260,8 +262,9 @@ export function Composer({ busy, onSubmit }: Props) {
         </label>
       )}
 
-      <button type="submit" className="btn btn-primary btn-block" disabled={!canSubmit}>
-        {busy ? 'Generating… (submit again to replace)' : 'Generate study set'}
+      <button type="submit" className="btn btn-primary btn-block btn-lg btn-forge" disabled={!canSubmit}>
+        <Sparkles size={18} aria-hidden />
+        {busy ? 'Forging… (submit again to replace)' : 'Forge study set'}
       </button>
       <p className="muted small center">Ctrl/⌘ + Enter to generate · drop a file on the box to attach it</p>
     </form>

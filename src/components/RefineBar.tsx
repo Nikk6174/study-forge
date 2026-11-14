@@ -1,3 +1,4 @@
+import { Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import { LIMITS } from '../../shared/types';
 
@@ -21,7 +22,7 @@ export function RefineBar({ busy, onRefine }: { busy: boolean; onRefine: (instru
       }}
     >
       <label htmlFor="refine" className="label">
-        Refine this set
+        <Wand2 size={14} aria-hidden /> Refine this set <span className="xp-hint">+5 XP</span>
       </label>
       <div className="refine-row">
         <input

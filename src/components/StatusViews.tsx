@@ -1,7 +1,10 @@
+import { AlertTriangle, Info, RefreshCw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AppError, ErrorCode } from '../../shared/errors';
 
 const SLOW_AFTER_S = 10;
+
+const STEPS = ['Reading your material…', 'Pulling out key ideas…', 'Writing flashcards…', 'Crafting tricky distractors…', 'Polishing explanations…'];
 
 function useElapsedSeconds(since: number) {
   const [now, setNow] = useState(() => Date.now());
@@ -15,26 +18,27 @@ function useElapsedSeconds(since: number) {
 export function LoadingState({ startedAt, onCancel }: { startedAt: number; onCancel: () => void }) {
   const elapsed = useElapsedSeconds(startedAt);
   const slow = elapsed >= SLOW_AFTER_S;
+  const step = STEPS[Math.min(Math.floor(elapsed / 2), STEPS.length - 1)]!;
   return (
-    <div className="panel loading" role="status" aria-live="polite">
-      <div className="loading-head">
-        <span className="spinner" aria-hidden />
-        <div>
-          <strong>{slow ? 'Still working — the AI is slower than usual' : 'Generating your study set…'}</strong>
-          <p className="muted small">
-            {elapsed}s{slow ? ' · we’ll retry or switch models automatically if it stalls' : ''}
-          </p>
+    <div className="panel forge" role="status" aria-live="polite">
+      <div className="forge-cards" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="forge-copy">
+        <div className="eyebrow">Forging your set · {elapsed}s</div>
+        <h3>{slow ? 'The AI is slower than usual…' : step}</h3>
+        <p className="muted small">
+          {slow ? 'Hang tight — we’ll retry or switch models automatically if it stalls.' : 'Usually takes 3–8 seconds.'}
+        </p>
+        <div className="forge-bar" aria-hidden>
+          <span />
         </div>
-        <button className="btn btn-ghost" onClick={onCancel}>
-          Cancel
-        </button>
       </div>
-      <div className="skeleton-card" aria-hidden />
-      <div className="skeleton-row" aria-hidden>
-        <span />
-        <span />
-        <span />
-      </div>
+      <button className="btn btn-ghost" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   );
 }
@@ -71,20 +75,23 @@ export function ErrorState({
 }) {
   return (
     <div className={`panel error ${compact ? 'error-compact' : ''}`} role="alert">
-      <div>
+      <div className="error-icon" aria-hidden>
+        <AlertTriangle size={compact ? 18 : 22} />
+      </div>
+      <div className="error-body">
         <strong>{TITLES[error.code]}</strong>
         <p>{error.message}</p>
         {HINTS[error.code] && <p className="muted small">{HINTS[error.code]}</p>}
-      </div>
-      <div className="actions">
-        {error.retryable && (
-          <button className="btn btn-primary" onClick={onRetry}>
-            Retry
+        <div className="actions">
+          {error.retryable && (
+            <button className="btn btn-primary" onClick={onRetry}>
+              <RefreshCw size={16} aria-hidden /> Retry
+            </button>
+          )}
+          <button className="btn btn-ghost" onClick={onDismiss}>
+            Dismiss
           </button>
-        )}
-        <button className="btn btn-ghost" onClick={onDismiss}>
-          Dismiss
-        </button>
+        </div>
       </div>
     </div>
   );
@@ -94,34 +101,15 @@ export function Warnings({ warnings, onDismiss }: { warnings: string[]; onDismis
   if (!warnings.length) return null;
   return (
     <div className="warnings" role="status">
+      <Info size={16} aria-hidden />
       <ul>
         {warnings.map((w) => (
           <li key={w}>{w}</li>
         ))}
       </ul>
       <button className="btn btn-ghost btn-small" onClick={onDismiss} aria-label="Dismiss notes">
-        ✕
+        <X size={14} />
       </button>
-    </div>
-  );
-}
-
-export function EmptyState() {
-  return (
-    <div className="panel empty">
-      <h2>Turn notes into practice</h2>
-      <ol className="steps">
-        <li>
-          <strong>Paste</strong> lecture notes, an article, or just name a topic.
-        </li>
-        <li>
-          <strong>Study</strong> with flip cards and a multiple-choice quiz.
-        </li>
-        <li>
-          <strong>Retest</strong> only what you got wrong, and refine the set with follow-ups like “make it harder”.
-        </li>
-      </ol>
-      <p className="muted small">Sets are saved in this browser so you can come back to them.</p>
     </div>
   );
 }

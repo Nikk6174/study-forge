@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f7f7fb" />
+    <meta name="theme-color" content="#F6F4FB" />
     <meta name="description" content="Turn notes or a topic into flashcards and quizzes." />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%238B5CF6'/><stop offset='1' stop-color='%2322D3EE'/></linearGradient></defs><path d='M16 2 30 16 16 30 2 16Z' fill='url(%23g)'/></svg>" />
     <title>Study Forge</title>
     <script>
       // Apply the saved/system theme before first paint to avoid a flash.
       try {
         var t = localStorage.getItem('study-forge:theme');
-        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        if (t !== 'light' && t !== 'dark') t = 'dark';
         document.documentElement.dataset.theme = t;
       } catch (e) {}
     </script>

@@ -1,7 +1,11 @@
+import { ArrowLeft, ArrowRight, Check, RotateCcw, Shuffle, Sparkles, X } from 'lucide-react';
 import { useReducer, useRef } from 'react';
 import type { Flashcard } from '../../shared/types';
+import { xpFor } from '../game/engine';
+import { useGame } from '../game/GameContext';
 import { useHotkeys } from '../hooks/useHotkeys';
 import { shuffle } from '../lib/study';
+import { Ring } from './game/GameUI';
 
 type Mark = 'known' | 'again';
 
@@ -39,6 +43,7 @@ function deckReducer(s: DeckState, a: DeckAction): DeckState {
 }
 
 export function FlashcardDeck({ cards, active = true }: { cards: Flashcard[]; active?: boolean }) {
+  const game = useGame();
   const [s, dispatch] = useReducer(deckReducer, cards, (c): DeckState => ({
     queue: c.map((x) => x.id),
     pos: 0,
@@ -52,20 +57,35 @@ export function FlashcardDeck({ cards, active = true }: { cards: Flashcard[]; ac
   const missed = s.queue.filter((id) => s.marks[id] === 'again');
   const known = s.queue.filter((id) => s.marks[id] === 'known').length;
 
+  /** Marking = reducer update + game event. XP only for a card's first mark per round (no farming via ←). */
+  const mark = (m: Mark) => {
+    const id = s.queue[s.pos];
+    if (!id) return;
+    dispatch({ type: 'mark', mark: m });
+    if (!(id in s.marks)) game.record({ type: 'card_marked', known: m === 'known' });
+    if (s.pos + 1 === s.queue.length) {
+      const marks = { ...s.marks, [id]: m };
+      const k = s.queue.filter((x) => marks[x] === 'known').length;
+      game.record({ type: 'deck_completed', known: k, total: s.queue.length });
+      if (k === s.queue.length) game.celebrate();
+    }
+  };
+
   useHotkeys((e) => {
     if (done) return;
     const k = e.key.toLowerCase();
     if (k === ' ' || k === 'enter') dispatch({ type: 'flip' });
     else if (k === 'arrowright') dispatch({ type: 'go', delta: 1 });
     else if (k === 'arrowleft') dispatch({ type: 'go', delta: -1 });
-    else if (s.flipped && (k === '1' || k === 'j')) dispatch({ type: 'mark', mark: 'again' });
-    else if (s.flipped && (k === '2' || k === 'k')) dispatch({ type: 'mark', mark: 'known' });
+    else if (s.flipped && (k === '1' || k === 'j')) mark('again');
+    else if (s.flipped && (k === '2' || k === 'k')) mark('known');
     else return;
     e.preventDefault();
   }, active);
 
-  // Horizontal swipe to navigate on touch screens; a tap still flips.
+  // Swipe to navigate on touch; tap flips. Mouse hover tilts the card.
   const touchX = useRef<number | null>(null);
+  const tiltEl = useRef<HTMLButtonElement>(null);
   const onPointerDown = (e: React.PointerEvent) => {
     touchX.current = e.clientX;
   };
@@ -77,29 +97,54 @@ export function FlashcardDeck({ cards, active = true }: { cards: Flashcard[]; ac
     if (Math.abs(dx) > 60) dispatch({ type: 'go', delta: dx < 0 ? 1 : -1 });
     else dispatch({ type: 'flip' });
   };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'mouse' || !tiltEl.current) return;
+    const r = tiltEl.current.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    tiltEl.current.style.setProperty('--tx', `${(-y * 8).toFixed(2)}deg`);
+    tiltEl.current.style.setProperty('--ty', `${(x * 10).toFixed(2)}deg`);
+    tiltEl.current.style.setProperty('--gx', `${((x + 0.5) * 100).toFixed(1)}%`);
+    tiltEl.current.style.setProperty('--gy', `${((y + 0.5) * 100).toFixed(1)}%`);
+  };
+  const onPointerLeave = () => {
+    tiltEl.current?.style.setProperty('--tx', '0deg');
+    tiltEl.current?.style.setProperty('--ty', '0deg');
+  };
 
   if (done) {
+    const total = s.queue.length;
+    const pct = total ? known / total : 0;
+    const perfect = known === total;
     return (
-      <div className="panel round-summary" role="status">
-        <h3>{s.round > 1 ? `Review round ${s.round} complete` : 'Deck complete'}</h3>
+      <div className="panel summary" role="status">
+        <Ring value={pct} size={128} stroke={10}>
+          <span className="ring-big">{Math.round(pct * 100)}%</span>
+          <span className="ring-small">mastered</span>
+        </Ring>
+        <h3>{perfect ? 'Deck mastered!' : s.round > 1 ? `Review round ${s.round} done` : 'Deck complete'}</h3>
         <div className="score-row">
-          <span className="pill pill-good">{known} got it</span>
-          <span className="pill pill-bad">{missed.length} still learning</span>
-          {s.queue.length - known - missed.length > 0 && (
-            <span className="pill">{s.queue.length - known - missed.length} skipped</span>
-          )}
+          <span className="pill pill-good">
+            <Check size={14} aria-hidden /> {known} got it
+          </span>
+          <span className="pill pill-bad">
+            <X size={14} aria-hidden /> {missed.length} still learning
+          </span>
+          <span className="pill pill-gold">
+            <Sparkles size={14} aria-hidden /> +{xpFor({ type: 'deck_completed', known, total })} XP bonus
+          </span>
         </div>
-        <div className="actions">
+        <div className="actions center">
           {missed.length > 0 && (
-            <button className="btn btn-primary" onClick={() => dispatch({ type: 'newRound', queue: shuffle(missed) })}>
-              Review {missed.length} missed card{missed.length === 1 ? '' : 's'}
+            <button className="btn btn-primary btn-lg" onClick={() => dispatch({ type: 'newRound', queue: shuffle(missed) })}>
+              <RotateCcw size={18} aria-hidden /> Review {missed.length} missed
             </button>
           )}
           <button className="btn" onClick={() => dispatch({ type: 'newRound', queue: cards.map((c) => c.id) })}>
             Restart deck
           </button>
           <button className="btn" onClick={() => dispatch({ type: 'newRound', queue: shuffle(cards.map((c) => c.id)) })}>
-            Shuffle &amp; restart
+            <Shuffle size={16} aria-hidden /> Shuffle
           </button>
         </div>
       </div>
@@ -108,63 +153,69 @@ export function FlashcardDeck({ cards, active = true }: { cards: Flashcard[]; ac
 
   return (
     <div className="deck">
-      <div className="progress" aria-hidden>
-        <div className="progress-bar" style={{ width: `${(s.pos / s.queue.length) * 100}%` }} />
-      </div>
-      <div className="deck-meta">
-        <span>
-          Card {s.pos + 1} of {s.queue.length}
-          {s.round > 1 && ' · review'}
+      <div className="round-head">
+        <span className="round-count">
+          <strong>{s.pos + 1}</strong>
+          <span className="muted">/{s.queue.length}</span>
+          {s.round > 1 && <span className="tag">review</span>}
         </span>
-        <span className="muted">
-          {known} known · {missed.length} learning
-        </span>
+        <div className="segbar" aria-hidden>
+          {s.queue.map((id, i) => (
+            <span key={id} className={s.marks[id] === 'known' ? 'is-good' : s.marks[id] === 'again' ? 'is-bad' : i === s.pos ? 'is-current' : ''} />
+          ))}
+        </div>
       </div>
 
-      <button
-        type="button"
-        className={`card ${s.flipped ? 'is-flipped' : ''}`}
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-        // Keyboard activation (Space/Enter while focused) arrives as a click with detail 0;
-        // pointer taps are handled above so they can be told apart from swipes.
-        onClick={(e) => e.detail === 0 && dispatch({ type: 'flip' })}
-        aria-label={s.flipped ? `Answer: ${card!.back}. Activate to show question.` : `Question: ${card!.front}. Activate to reveal answer.`}
-      >
-        <span className="card-inner">
-          <span className="card-face card-front">
-            <span className="card-label">Question</span>
-            <span className="card-text">{card!.front}</span>
-            {card!.hint && <span className="card-hint">Hint: {card!.hint}</span>}
-            <span className="card-cta">Tap or press Space to flip</span>
+      <div className="card-stage">
+        <span className="card-shadow" aria-hidden />
+        <span className="card-shadow card-shadow-2" aria-hidden />
+        <button
+          ref={tiltEl}
+          type="button"
+          className={`card ${s.flipped ? 'is-flipped' : ''}`}
+          onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
+          onPointerMove={onPointerMove}
+          onPointerLeave={onPointerLeave}
+          // Keyboard activation arrives as a click with detail 0; pointer taps are handled above.
+          onClick={(e) => e.detail === 0 && dispatch({ type: 'flip' })}
+          aria-label={s.flipped ? `Answer: ${card!.back}. Activate to show question.` : `Question: ${card!.front}. Activate to reveal answer.`}
+        >
+          <span className="card-inner">
+            <span className="card-face card-front">
+              <span className="card-label">Question</span>
+              <span className="card-text">{card!.front}</span>
+              {card!.hint && <span className="card-hint">Hint: {card!.hint}</span>}
+              <span className="card-cta">Tap or press Space to flip</span>
+            </span>
+            <span className="card-face card-back">
+              <span className="card-label">Answer</span>
+              <span className="card-text">{card!.back}</span>
+            </span>
           </span>
-          <span className="card-face card-back">
-            <span className="card-label">Answer</span>
-            <span className="card-text">{card!.back}</span>
-          </span>
-        </span>
-      </button>
+        </button>
+      </div>
 
       <div className="deck-controls">
         <button className="btn btn-icon" onClick={() => dispatch({ type: 'go', delta: -1 })} disabled={s.pos === 0} aria-label="Previous card">
-          ←
+          <ArrowLeft size={18} />
         </button>
         {s.flipped ? (
           <>
-            <button className="btn btn-bad" onClick={() => dispatch({ type: 'mark', mark: 'again' })}>
-              Still learning <kbd>1</kbd>
+            <button className="btn btn-bad" onClick={() => mark('again')}>
+              <X size={18} aria-hidden /> Still learning <kbd>1</kbd>
             </button>
-            <button className="btn btn-good" onClick={() => dispatch({ type: 'mark', mark: 'known' })}>
-              Got it <kbd>2</kbd>
+            <button className="btn btn-good" onClick={() => mark('known')}>
+              <Check size={18} aria-hidden /> Got it <span className="xp-hint">+5</span> <kbd>2</kbd>
             </button>
           </>
         ) : (
           <button className="btn btn-primary" onClick={() => dispatch({ type: 'flip' })}>
-            Show answer <kbd>Space</kbd>
+            Reveal answer <kbd>Space</kbd>
           </button>
         )}
         <button className="btn btn-icon" onClick={() => dispatch({ type: 'go', delta: 1 })} aria-label="Next card">
-          →
+          <ArrowRight size={18} />
         </button>
       </div>
     </div>
