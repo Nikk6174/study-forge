@@ -41,7 +41,11 @@ const RequestSchema = z.object({
     .min(LIMITS.textMin, 'Enter at least a few characters.')
     .max(LIMITS.textMax, `Notes are too long (max ${LIMITS.textMax.toLocaleString()} characters).`),
   mode: z.enum(['flashcards', 'quiz', 'both']),
-  count: z.coerce.number().int().min(LIMITS.countMin).max(LIMITS.countMax),
+  count: z.coerce
+    .number()
+    .int()
+    .min(LIMITS.countMin, `Choose at least ${LIMITS.countMin} items.`)
+    .max(LIMITS.countMax, `Choose at most ${LIMITS.countMax} items.`),
   refine: z
     .object({
       set: z.unknown(),
