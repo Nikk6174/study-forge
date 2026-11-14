@@ -62,7 +62,9 @@ src/
   lib/api.ts         fetch wrapper: always returns validated data or throws AppError
   hooks/useGeneration.ts   request lifecycle: abort, stale guard, retry, cancel
   hooks/useSessions.ts     persisted sets + version stack (refine/undo)
-  components/        Composer, FlashcardDeck, Quiz, StudySetView, StatusViews, …
+  game/engine.ts     pure game rules: XP, combos, levels, streaks, achievements
+  game/GameContext   profile state + persistence + feedback queue (toasts, level-up, confetti)
+  components/        Composer, FlashcardDeck, Quiz, StudySetView, Dashboard, StatusViews, game/GameUI
 ```
 
 **Data flow:** `Composer` → `useGeneration.run()` → `POST /api/generate` → `generate()` → Gemini → `normalizeStudySet()` → response → `normalizeStudySet()` runs again in the browser → `useSessions.create()` → `StudySetView` renders `FlashcardDeck` / `Quiz`.
@@ -104,6 +106,8 @@ Models also tend to put the correct answer in the same slot. The quiz reshuffles
 
 ## Features
 
+- **Gamified study loop:** you earn XP for effort ("still learning" still pays) and more for accuracy. Chaining correct quiz answers builds a combo, up to a 3× multiplier. There are levels with titles (Novice → Legend), a daily streak, and 9 achievements. Level-ups, perfect rounds and unlocked achievements trigger confetti. Nothing ever takes XP away: wrong answers only reset the combo. The rules live in [`src/game/engine.ts`](src/game/engine.ts) as pure functions, with tests. [`GameContext`](src/game/GameContext.tsx) applies them, saves the profile to localStorage (checked again on load), and queues the feedback. The deck and quiz only call `record(event)`.
+- **Design:** dark-first "night arcade" look with a light mode. One violet→cyan brand gradient is the identity, and semantic colours carry game meaning (mint = correct, coral = wrong, gold = XP, orange = streak) and are never used as decoration. Display type is Bricolage Grotesque and UI type is Inter, both self-hosted through `@fontsource` with no third-party requests. Glass panels sit over slowly drifting gradient light. Flashcards tilt toward the mouse, and every animation respects `prefers-reduced-motion`.
 - **Upload from device:** use the paperclip button or drag a file onto the textarea. Text files (`.txt`, `.md`, `.csv`, `.json`) are read in the browser and put into the textarea so you can edit them. PDFs and images (PNG, JPG, WebP, HEIC) are sent to Gemini as `inlineData`, so on a phone you can photograph your notes. Files over 3 MB, empty files and unsupported types are rejected in the browser with a specific message, and the server checks type, size and base64 again. If you pick files quickly in a row, only the last one is kept.
 - Flashcards: 3D flip, "Got it / Still learning", end-of-deck summary, **review only missed cards**, shuffle. Keys: `Space` flips, `←`/`→` move between cards, `1`/`2` mark. Swipe on touch screens.
 - Quiz: immediate feedback with an explanation, results with your answer next to the correct one, **retest only wrong answers**. Keys: `1–6` or `A–F` to answer, `Enter` for next.
@@ -112,11 +116,12 @@ Models also tend to put the correct answer in the same slot. The quiz reshuffles
 
 ## Tests
 
-`npm test` runs 37 tests:
+`npm test` runs 45 tests:
 
 - the normaliser: every drift and failure case above;
 - the server pipeline with a scripted fake `fetch`: repair turn, fallback on 5xx/429/timeout, no retry on empty, safety block, bad key, client abort, input validation, simulator, and attachments (sent as `inlineData`, kept on the repair turn, invalid ones rejected before any model call);
-- quiz shuffling.
+- quiz shuffling;
+- game rules: XP and combo maths, the level curve, streaks across month boundaries, achievement unlocks, and recovering a corrupt saved profile.
 
 ---
 
