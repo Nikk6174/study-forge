@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Flame, RotateCcw, Sparkles, X } from 'lucide-react';
+import { ArrowRight, Check, Flame, Home, RotateCcw, Sparkles, X } from 'lucide-react';
 import { useEffect, useReducer, useRef } from 'react';
 import type { QuizQuestion } from '../../shared/types';
 import { comboMultiplier, xpFor } from '../game/engine';
@@ -42,7 +42,13 @@ function quizReducer(s: QuizState, a: QuizAction): QuizState {
 
 const LETTERS = 'ABCDEF';
 
-export function Quiz({ questions, active = true }: { questions: QuizQuestion[]; active?: boolean }) {
+interface QuizProps {
+  questions: QuizQuestion[];
+  active?: boolean;
+  onHome?: () => void;
+}
+
+export function Quiz({ questions, active = true, onHome }: QuizProps) {
   const game = useGame();
   const [s, dispatch] = useReducer(quizReducer, questions, (qs): QuizState => ({
     round: buildRound(qs),
@@ -148,6 +154,11 @@ export function Quiz({ questions, active = true }: { questions: QuizQuestion[]; 
           <button className="btn" onClick={() => dispatch({ type: 'start', round: buildRound(questions), isRetest: false })}>
             Retake full quiz
           </button>
+          {onHome && (
+            <button className="btn btn-ghost" onClick={onHome}>
+              <Home size={16} aria-hidden /> Back to home
+            </button>
+          )}
         </div>
       </div>
     );

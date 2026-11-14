@@ -1,4 +1,4 @@
-import { BrainCircuit, FileText, GitBranch, Layers, Undo2 } from 'lucide-react';
+import { ArrowLeft, BrainCircuit, FileText, GitBranch, Layers, Undo2 } from 'lucide-react';
 import { useState } from 'react';
 import type { Session } from '../hooks/useSessions';
 import { FlashcardDeck } from './FlashcardDeck';
@@ -14,9 +14,11 @@ interface Props {
   footer?: React.ReactNode;
   refining: boolean;
   onUndo: () => void;
+  /** Leave the set and return to the dashboard. */
+  onHome: () => void;
 }
 
-export function StudySetView({ session, children, footer, refining, onUndo }: Props) {
+export function StudySetView({ session, children, footer, refining, onUndo, onHome }: Props) {
   const version = session.versions[session.versions.length - 1]!;
   const { set } = version;
   const hasCards = set.flashcards.length > 0;
@@ -27,6 +29,17 @@ export function StudySetView({ session, children, footer, refining, onUndo }: Pr
 
   return (
     <section className="study" aria-busy={refining}>
+      <nav className="crumbs" aria-label="Breadcrumb">
+        <button className="crumb-back" onClick={onHome}>
+          <ArrowLeft size={16} aria-hidden /> Home
+        </button>
+        <span className="crumb-sep" aria-hidden>
+          /
+        </span>
+        <span className="crumb-current" aria-current="page">
+          {set.title}
+        </span>
+      </nav>
       <header className="study-head">
         <div className="study-title">
           <div className="eyebrow">Study set</div>
@@ -77,12 +90,12 @@ export function StudySetView({ session, children, footer, refining, onUndo }: Pr
       <div className={`study-body ${refining ? 'is-refining' : ''}`}>
         {hasCards && (
           <div role="tabpanel" hidden={active !== 'cards'}>
-            <FlashcardDeck key={version.id} cards={set.flashcards} active={active === 'cards'} />
+            <FlashcardDeck key={version.id} cards={set.flashcards} active={active === 'cards'} onHome={onHome} />
           </div>
         )}
         {hasQuiz && (
           <div role="tabpanel" hidden={active !== 'quiz'}>
-            <Quiz key={version.id} questions={set.questions} active={active === 'quiz'} />
+            <Quiz key={version.id} questions={set.questions} active={active === 'quiz'} onHome={onHome} />
           </div>
         )}
       </div>

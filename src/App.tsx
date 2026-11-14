@@ -1,5 +1,5 @@
 import { Moon, Sun } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Composer, type ComposerValue } from './components/Composer';
 import { Dashboard } from './components/Dashboard';
 import { Confetti, Hud, LevelUpOverlay, ToastLayer } from './components/game/GameUI';
@@ -20,9 +20,12 @@ import { useTheme } from './hooks/useTheme';
  * Study progress (card marks, quiz answers) is local reducer state inside
  * the deck/quiz components and resets whenever a new version is rendered.
  */
+/** "#/set/<id>" → id. The URL is the source of truth on load and on Back/Forward. */
+const sessionIdFromHash = () => /^#\/set\/([\w-]+)$/.exec(window.location.hash)?.[1] ?? null;
+
 export default function App() {
   const { theme, toggle } = useTheme();
-  const sessions = useSessions();
+  const sessions = useSessions(sessionIdFromHash());
   const gen = useGeneration();
   const game = useGame();
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -53,6 +56,34 @@ export default function App() {
 
   const active = sessions.active;
 
+  /*
+   * Minimal routing: "#/set/<id>" ↔ the active session. The initial route is
+   * applied in useSessions' initialiser; after that, in-app navigation pushes
+   * history entries (effect below) and Back/Forward select via popstate.
+   * Unknown or deleted ids fall back to home.
+   */
+  const { select: selectSession, sessions: allSessions } = sessions;
+  // The popstate listener is registered once, so read the *current* list through a ref.
+  const sessionsRef = useRef(allSessions);
+  sessionsRef.current = allSessions;
+
+  useEffect(() => {
+    const onPop = () => {
+      const id = sessionIdFromHash();
+      selectSession(id && sessionsRef.current.some((s) => s.id === id) ? id : null);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [selectSession]);
+
+  useEffect(() => {
+    const want = active ? `#/set/${active.id}` : '';
+    if (window.location.hash === want) return;
+    // Changes that came from Back/Forward already match the hash, so only
+    // in-app navigation reaches this point and gets its own history entry.
+    window.history.pushState(null, '', want || window.location.pathname + window.location.search);
+  }, [active]);
+
   const handleRefine = (instruction: string) => {
     if (!active) return;
     const sessionId = active.id;
@@ -75,7 +106,10 @@ export default function App() {
     if (gen.state.status === 'error') gen.dismiss();
     sessions.select(id);
     if (id) revealWorkspace();
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const goHome = () => select(null);
 
   const { state } = gen;
   const generating = state.status === 'loading' && state.kind === 'generate';
@@ -131,6 +165,7 @@ export default function App() {
                 session={active}
                 refining={refiningHere && state.status === 'loading'}
                 onUndo={() => sessions.undo(active.id)}
+                onHome={goHome}
                 footer={<RefineBar busy={state.status === 'loading'} onRefine={handleRefine} />}
               >
                 <Warnings warnings={warnings} onDismiss={() => setWarnings([])} />

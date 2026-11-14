@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Check, RotateCcw, Shuffle, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Home, RotateCcw, Shuffle, Sparkles, X } from 'lucide-react';
 import { useReducer, useRef } from 'react';
 import type { Flashcard } from '../../shared/types';
 import { xpFor } from '../game/engine';
@@ -42,7 +42,13 @@ function deckReducer(s: DeckState, a: DeckAction): DeckState {
   }
 }
 
-export function FlashcardDeck({ cards, active = true }: { cards: Flashcard[]; active?: boolean }) {
+interface DeckProps {
+  cards: Flashcard[];
+  active?: boolean;
+  onHome?: () => void;
+}
+
+export function FlashcardDeck({ cards, active = true, onHome }: DeckProps) {
   const game = useGame();
   const [s, dispatch] = useReducer(deckReducer, cards, (c): DeckState => ({
     queue: c.map((x) => x.id),
@@ -146,6 +152,11 @@ export function FlashcardDeck({ cards, active = true }: { cards: Flashcard[]; ac
           <button className="btn" onClick={() => dispatch({ type: 'newRound', queue: shuffle(cards.map((c) => c.id)) })}>
             <Shuffle size={16} aria-hidden /> Shuffle
           </button>
+          {onHome && (
+            <button className="btn btn-ghost" onClick={onHome}>
+              <Home size={16} aria-hidden /> Back to home
+            </button>
+          )}
         </div>
       </div>
     );

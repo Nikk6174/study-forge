@@ -127,8 +127,16 @@ function load(): State {
   }
 }
 
-export function useSessions() {
-  const [state, dispatch] = useReducer(reducer, undefined, load);
+/**
+ * @param initialActiveId session to open on first render (e.g. from the URL).
+ *   Applied in the initialiser, not an effect, so there's no flash of the
+ *   home screen and no race with URL-sync effects. Unknown ids are ignored.
+ */
+export function useSessions(initialActiveId: string | null = null) {
+  const [state, dispatch] = useReducer(reducer, initialActiveId, (id): State => {
+    const loaded = load();
+    return { ...loaded, activeId: id && loaded.sessions.some((s) => s.id === id) ? id : null };
+  });
 
   useEffect(() => {
     try {
