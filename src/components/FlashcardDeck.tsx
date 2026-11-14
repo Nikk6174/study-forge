@@ -38,7 +38,7 @@ function deckReducer(s: DeckState, a: DeckAction): DeckState {
   }
 }
 
-export function FlashcardDeck({ cards }: { cards: Flashcard[] }) {
+export function FlashcardDeck({ cards, active = true }: { cards: Flashcard[]; active?: boolean }) {
   const [s, dispatch] = useReducer(deckReducer, cards, (c): DeckState => ({
     queue: c.map((x) => x.id),
     pos: 0,
@@ -62,7 +62,7 @@ export function FlashcardDeck({ cards }: { cards: Flashcard[] }) {
     else if (s.flipped && (k === '2' || k === 'k')) dispatch({ type: 'mark', mark: 'known' });
     else return;
     e.preventDefault();
-  });
+  }, active);
 
   // Horizontal swipe to navigate on touch screens; a tap still flips.
   const touchX = useRef<number | null>(null);

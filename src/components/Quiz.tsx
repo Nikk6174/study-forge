@@ -31,7 +31,7 @@ function quizReducer(s: QuizState, a: QuizAction): QuizState {
 
 const LETTERS = 'ABCDEF';
 
-export function Quiz({ questions }: { questions: QuizQuestion[] }) {
+export function Quiz({ questions, active = true }: { questions: QuizQuestion[]; active?: boolean }) {
   const [s, dispatch] = useReducer(quizReducer, questions, (qs): QuizState => ({
     round: buildRound(qs),
     index: 0,
@@ -52,8 +52,8 @@ export function Quiz({ questions }: { questions: QuizQuestion[] }) {
   // Move focus to "Next" after answering so Enter continues and screen
   // readers land on the feedback.
   useEffect(() => {
-    if (answered) nextRef.current?.focus();
-  }, [answered]);
+    if (answered && active) nextRef.current?.focus();
+  }, [answered, active]);
 
   useHotkeys((e) => {
     if (done || !q) return;
@@ -66,7 +66,7 @@ export function Quiz({ questions }: { questions: QuizQuestion[] }) {
       dispatch({ type: 'next' });
       e.preventDefault();
     }
-  });
+  }, active);
 
   if (done) {
     const pct = Math.round((score / s.round.length) * 100);

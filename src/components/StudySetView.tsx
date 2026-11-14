@@ -7,13 +7,15 @@ type Tab = 'cards' | 'quiz';
 
 interface Props {
   session: Session;
-  /** Rendered between the header and the study area (refine bar, status). */
+  /** Rendered between the header and the study area (warnings, refine status). */
   children?: React.ReactNode;
+  /** Rendered below the study area – refining is secondary to studying. */
+  footer?: React.ReactNode;
   refining: boolean;
   onUndo: () => void;
 }
 
-export function StudySetView({ session, children, refining, onUndo }: Props) {
+export function StudySetView({ session, children, footer, refining, onUndo }: Props) {
   const version = session.versions[session.versions.length - 1]!;
   const { set } = version;
   const hasCards = set.flashcards.length > 0;
@@ -53,14 +55,23 @@ export function StudySetView({ session, children, refining, onUndo }: Props) {
         </div>
       )}
 
-      {/* key = version id: a new version resets study progress for that view. */}
-      <div className={`study-body ${refining ? 'is-refining' : ''}`} role="tabpanel">
-        {active === 'cards' ? (
-          <FlashcardDeck key={version.id} cards={set.flashcards} />
-        ) : (
-          <Quiz key={version.id} questions={set.questions} />
+      {/* Both views stay mounted so switching tabs keeps progress; only the
+          visible one listens to the keyboard. key = version id: a new
+          version (refinement) starts fresh. */}
+      <div className={`study-body ${refining ? 'is-refining' : ''}`}>
+        {hasCards && (
+          <div role="tabpanel" hidden={active !== 'cards'}>
+            <FlashcardDeck key={version.id} cards={set.flashcards} active={active === 'cards'} />
+          </div>
+        )}
+        {hasQuiz && (
+          <div role="tabpanel" hidden={active !== 'quiz'}>
+            <Quiz key={version.id} questions={set.questions} active={active === 'quiz'} />
+          </div>
         )}
       </div>
+
+      {footer}
     </section>
   );
 }

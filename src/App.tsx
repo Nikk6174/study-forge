@@ -98,7 +98,13 @@ export default function App() {
           )}
 
           {active ? (
-            <StudySetView key={active.id} session={active} refining={refiningHere && state.status === 'loading'} onUndo={() => sessions.undo(active.id)}>
+            <StudySetView
+              key={active.id}
+              session={active}
+              refining={refiningHere && state.status === 'loading'}
+              onUndo={() => sessions.undo(active.id)}
+              footer={<RefineBar busy={state.status === 'loading'} onRefine={handleRefine} />}
+            >
               <Warnings warnings={warnings} onDismiss={() => setWarnings([])} />
               {refiningHere && state.status === 'loading' && (
                 <div className="refine-status" role="status">
@@ -111,7 +117,6 @@ export default function App() {
               {refiningHere && state.status === 'error' && (
                 <ErrorState compact error={state.error} onRetry={gen.retry} onDismiss={gen.dismiss} />
               )}
-              <RefineBar busy={state.status === 'loading'} onRefine={handleRefine} />
             </StudySetView>
           ) : (
             !generating && state.status !== 'error' && <EmptyState />
