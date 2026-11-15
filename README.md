@@ -2,6 +2,8 @@
 
 Paste notes, name a topic, or **attach a file** (PDF, a photo of your notes, or a text file), and Gemini turns it into **flashcards** and a **multiple-choice quiz**. Flip through cards, take the quiz, retest only the questions you missed, and refine the set with follow-ups like "make it harder".
 
+**Live demo:** https://study-forge-lac.vercel.app
+
 It isn't a chatbot. The model returns JSON. The server and the client both validate it, and the app renders it as stateful React components.
 
 ---
@@ -34,7 +36,7 @@ npm run dev                 # http://localhost:5173
 
 ### Deploy (Vercel)
 
-`api/generate.ts` is a Vercel serverless function, and `vercel.json` sets `maxDuration: 60`. Import the repo in Vercel, set `GEMINI_API_KEY` in the project's environment variables, and deploy.
+`api/generate.ts` is a Vercel serverless function, and `vercel.json` sets `maxDuration: 60`. Import the repo in Vercel, set `GEMINI_API_KEY` in the project's environment variables, and deploy. The live demo above is deployed this way.
 
 ### Try the failure paths
 
@@ -142,7 +144,6 @@ Models also tend to put the correct answer in the same slot. The quiz reshuffles
 - Attachments are capped at 3 MB, which keeps requests under Vercel's 4.5 MB body limit. Bigger PDFs would need upload to Gemini's Files API.
 - Attached files aren't saved with the session (localStorage only holds about 5 MB). Refining a file-based set therefore works from the generated cards and questions rather than re-reading the file.
 - Scanned PDFs and handwriting depend entirely on Gemini's vision, and quality varies.
-- The Vercel function hasn't been verified on a live deploy here. Locally, the same handler runs through the Vite plugin.
 
 ## Time spent
 
