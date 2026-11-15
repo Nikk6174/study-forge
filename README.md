@@ -147,4 +147,4 @@ Models also tend to put the correct answer in the same slot. The quiz reshuffles
 
 ## Time spent
 
-About 3–4 hours, including measuring model latency and testing in the browser. *(Adjust to your actual time.)*
+About 6 hours, including measuring model latency and testing in the browser.
